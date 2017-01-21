@@ -19,10 +19,8 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
 import org.opencv.core.*;
 import org.opencv.imgproc.*;
-
 import com.kauailabs.navx.frc.*;
 
 public class Robot extends SampleRobot implements PIDOutput {
