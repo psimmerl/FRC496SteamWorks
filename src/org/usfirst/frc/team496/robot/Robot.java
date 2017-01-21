@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
+import edu.wpi.first.wpilibj.PowerDistributionPanel;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -41,6 +42,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	SendableChooser<String> chooser = new SendableChooser<>();
 	AHRS ahrs;
 	Encoder enc;
+	PowerDistributionPanel pdp;
 	PIDController turnController;
 	double rotateToAngleRate;
 
@@ -55,11 +57,13 @@ public class Robot extends SampleRobot implements PIDOutput {
 	static final double kToleranceDegrees =2.0f;
 
 	public Robot() {
+		
 		try {
 			ahrs = new AHRS(SPI.Port.kMXP);
 		} catch (RuntimeException ex) {
 			DriverStation.reportError("Error instantiating navX-MXP:  " + ex.getMessage(), true);
 		}
+		pdp = new PowerDistributionPanel();
 		enc = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
 		myRobot.setExpiration(0.1);
 		myRobot.setInvertedMotor(MotorType.kFrontLeft, true);
@@ -73,6 +77,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setContinuous(true);
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
+		LiveWindow.addSensor("PowerSystem", "Current", pdp);
+	
+		LiveWindow.run();
+		
 
 	}
 
@@ -162,6 +170,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	@Override
 	public void test() {
 		LiveWindow.run();
+		System.out.println("Current of 14: " + pdp.getCurrent(14));
 	}
 
 	@Override
