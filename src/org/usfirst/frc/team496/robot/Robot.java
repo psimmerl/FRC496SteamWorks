@@ -5,6 +5,10 @@ import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.SampleRobot;
 import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.cscore.AxisCamera;
+import edu.wpi.cscore.CvSink;
+import edu.wpi.cscore.CvSource;
+import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
@@ -15,6 +19,10 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import org.opencv.core.*;
+import org.opencv.imgproc.*;
+
 import com.kauailabs.navx.frc.*;
 
 public class Robot extends SampleRobot implements PIDOutput {
@@ -28,8 +36,41 @@ public class Robot extends SampleRobot implements PIDOutput {
 	SendableChooser<String> chooser = new SendableChooser<>();
 	AHRS ahrs;
 	Encoder enc;
-	
 	PowerDistributionPanel pdp;
+
+	Thread visionThread = new Thread(() -> {
+		// Get the Axis camera from CameraServer
+		AxisCamera camera = CameraServer.getInstance().addAxisCamera("axis-camera.local");
+		// Set the resolution
+		camera.setResolution(640, 480);
+
+		// Get a CvSink. This will capture Mats from the camera
+		CvSink cvSink = CameraServer.getInstance().getVideo();
+		// Setup a CvSource. This will send images back to the Dashboard
+		CvSource outputStream = CameraServer.getInstance().putVideo("Rectangle", 640, 480);
+
+		// Mats are very memory expensive. Lets reuse this Mat.
+		Mat mat = new Mat();
+
+		// This cannot be 'true'. The program will never exit if it is. This
+		// lets the robot stop this thread when restarting robot code or
+		// deploying.
+		while (!Thread.interrupted()) {
+			// Tell the CvSink to grab a frame from the camera and put it
+			// in the source mat. If there is an error notify the output.
+			if (cvSink.grabFrame(mat) == 0) {
+				// Send the output the error.
+				outputStream.notifyError(cvSink.getError());
+				// skip the rest of the current iteration
+				continue;
+			}
+			// Put a rectangle on the image
+			Imgproc.rectangle(mat, new Point(100, 100), new Point(400, 400), new Scalar(255, 255, 255), 5);
+			// Give the output stream a new image to display
+			outputStream.putFrame(mat);
+		}
+	});
+
 	PIDController turnController;
 	double rotateToAngleRate;
 
@@ -41,10 +82,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 	/* This tuning parameter indicates how close to "on target" the */
 	/* PID Controller will attempt to get. */
 
-	static final double kToleranceDegrees =2.0f;
+	static final double kToleranceDegrees = 2.0f;
 
 	public Robot() {
-		
+
 		try {
 			ahrs = new AHRS(SPI.Port.kMXP);
 		} catch (RuntimeException ex) {
@@ -62,11 +103,13 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
 
+		visionThread.setDaemon(true);
+		visionThread.start();
+
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
-	
+
 		LiveWindow.run();
-		
 
 	}
 
@@ -82,7 +125,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 		enc.reset();
 		myRobot.setSafetyEnabled(false);
 		while (isAutonomous() && isEnabled()) {
-//			System.out.println(enc.getRaw());
+			// System.out.println(enc.getRaw());
 		}
 	}
 
@@ -96,12 +139,12 @@ public class Robot extends SampleRobot implements PIDOutput {
 				ahrs.reset();
 			}
 
-			if(xbox.getTrigger(Hand.kRight)){
+			if (xbox.getTrigger(Hand.kRight)) {
 				climbingMotor.set(1.0);
-			}else if(xbox.getTrigger(Hand.kLeft)){
+			} else if (xbox.getTrigger(Hand.kLeft)) {
 				climbingMotor.set(-1.0);
 			}
-			
+
 			else if (xbox.getPOV() <= 315 && xbox.getPOV() >= 225) {
 				turnController.setSetpoint(0.0f);
 				rotateToAngle = true;
