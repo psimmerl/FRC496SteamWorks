@@ -68,7 +68,6 @@ public class Robot extends SampleRobot implements PIDOutput {
 		myRobot.setExpiration(0.1);
 		myRobot.setInvertedMotor(MotorType.kFrontLeft, true);
 		myRobot.setInvertedMotor(MotorType.kRearLeft, true);
-		;
 
 		turnController = new PIDController(kP, kI, kD, kF, ahrs, this);
 		turnController.setInputRange(-180.0f, 180.0f);
