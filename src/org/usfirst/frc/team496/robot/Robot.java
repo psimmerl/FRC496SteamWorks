@@ -28,6 +28,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	SendableChooser<String> chooser = new SendableChooser<>();
 	AHRS ahrs;
 	Encoder enc;
+	
 	PowerDistributionPanel pdp;
 	PIDController turnController;
 	double rotateToAngleRate;
