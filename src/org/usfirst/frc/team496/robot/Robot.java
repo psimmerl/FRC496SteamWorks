@@ -27,7 +27,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
 
 	Talon climbingMotor = new Talon(4);
-	// Joystick stick = new Joystick(0);
+	//Joystick stick = new Joystick(0);
 	XboxController xbox = new XboxController(1);
 	final String defaultAuto = "Default";
 	final String customAuto = "My Auto";
@@ -63,7 +63,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				continue;
 			}
 			// Put a rectangle on the image
-			Imgproc.rectangle(mat, new Point(100, 100), new Point(400, 400), new Scalar(255, 255, 255), 5);
+			Imgproc.rectangle(mat, new Point(270, 290), new Point(370, 190), new Scalar(0, 255, 75), 1);
 			// Give the output stream a new image to display
 			outputStream.putFrame(mat);
 		}
@@ -80,7 +80,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	/* This tuning parameter indicates how close to "on target" the */
 	/* PID Controller will attempt to get. */
 
-	static final double kToleranceDegrees = 2.0f;
+	static final double kToleranceDegrees = 1.0f;
 
 	public Robot() {
 
