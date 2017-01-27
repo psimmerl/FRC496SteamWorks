@@ -26,12 +26,11 @@ import org.opencv.core.*;
 import org.opencv.imgproc.*;
 import com.kauailabs.navx.frc.*;
 
-
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
 
 	Talon climbingMotor = new Talon(4);
-	//Joystick stick = new Joystick(0);
+	// Joystick stick = new Joystick(0);
 	XboxController xbox = new XboxController(1);
 	final String defaultAuto = "Default";
 	final String customAuto = "My Auto";
@@ -42,16 +41,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	private static final int IMG_WIDTH = 320;
 	private static final int IMG_HEIGHT = 240;
-	
+
 	private VisionThread pegVisionThread;
 	private double centerX = 0.0;
 	private final Object imgLock = new Object();
-
-
-	
-
-    
-
 
 	PIDController turnController;
 	double rotateToAngleRate;
@@ -86,19 +79,33 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setContinuous(true);
 
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
-		camera.setResolution(IMG_WIDTH,IMG_HEIGHT);
-		
-		  pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
-		        if (!pipeline.filterContoursOutput().isEmpty()) {
-		            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-		            synchronized (imgLock) {
-		                centerX = r.x + (r.width / 2);
-		                
-		                //Can do target math here
-		            }
-		        }
-		    });
-		    pegVisionThread.start();
+		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
+
+		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
+			if (!pipeline.filterContoursOutput().isEmpty()) {
+				Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+				synchronized (imgLock) {
+					centerX = r.x + (r.width / 2);
+
+					CvSink cvSink = CameraServer.getInstance().getVideo();
+					CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
+
+					Mat source = new Mat();
+					Mat output = new Mat();
+
+					while (!Thread.interrupted()) {
+						cvSink.grabFrame(source);
+						Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x + r.width, r.y + r.height),
+								new Scalar(255, 0, 0));
+						Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
+						outputStream.putFrame(output);
+						// Can do target math here
+
+					}
+				}
+			}
+		});
+		pegVisionThread.start();
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
@@ -119,7 +126,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 		enc.reset();
 		myRobot.setSafetyEnabled(false);
 		while (isAutonomous() && isEnabled()) {
-			
+
 		}
 	}
 
