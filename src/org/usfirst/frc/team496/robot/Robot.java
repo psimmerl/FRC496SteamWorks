@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.cscore.AxisCamera;
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
+import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -19,9 +20,12 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.vision.VisionThread;
+
 import org.opencv.core.*;
 import org.opencv.imgproc.*;
 import com.kauailabs.navx.frc.*;
+
 
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
@@ -36,38 +40,18 @@ public class Robot extends SampleRobot implements PIDOutput {
 	Encoder enc;
 	PowerDistributionPanel pdp;
 
-	Thread visionThread = new Thread(() -> {
-		// Get the Axis camera from CameraServer
-		AxisCamera camera = CameraServer.getInstance().addAxisCamera("axis-camera.local");
-		// Set the resolution
-		camera.setResolution(640, 480);
+	private static final int IMG_WIDTH = 320;
+	private static final int IMG_HEIGHT = 240;
+	
+	private VisionThread pegVisionThread;
+	private double centerX = 0.0;
+	private final Object imgLock = new Object();
 
-		// Get a CvSink. This will capture Mats from the camera
-		CvSink cvSink = CameraServer.getInstance().getVideo();
-		// Setup a CvSource. This will send images back to the Dashboard
-		CvSource outputStream = CameraServer.getInstance().putVideo("Rectangle", 640, 480);
 
-		// Mats are very memory expensive. Lets reuse this Mat.
-		Mat mat = new Mat();
+	
 
-		// This cannot be 'true'. The program will never exit if it is. This
-		// lets the robot stop this thread when restarting robot code or
-		// deploying.
-		while (!Thread.interrupted()) {
-			// Tell the CvSink to grab a frame from the camera and put it
-			// in the source mat. If there is an error notify the output.
-			if (cvSink.grabFrame(mat) == 0) {
-				// Send the output the error.
-				outputStream.notifyError(cvSink.getError());
-				// skip the rest of the current iteration
-				continue;
-			}
-			// Put a rectangle on the image
-			Imgproc.rectangle(mat, new Point(270, 290), new Point(370, 190), new Scalar(0, 255, 75), 1);
-			// Give the output stream a new image to display
-			outputStream.putFrame(mat);
-		}
-	});
+    
+
 
 	PIDController turnController;
 	double rotateToAngleRate;
@@ -101,8 +85,20 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
 
-		visionThread.setDaemon(true);
-		visionThread.start();
+		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+		camera.setResolution(IMG_WIDTH,IMG_HEIGHT);
+		
+		  pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
+		        if (!pipeline.filterContoursOutput().isEmpty()) {
+		            Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+		            synchronized (imgLock) {
+		                centerX = r.x + (r.width / 2);
+		                
+		                //Can do target math here
+		            }
+		        }
+		    });
+		    pegVisionThread.start();
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
@@ -123,7 +119,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 		enc.reset();
 		myRobot.setSafetyEnabled(false);
 		while (isAutonomous() && isEnabled()) {
-			// System.out.println(enc.getRaw());
+			
 		}
 	}
 
