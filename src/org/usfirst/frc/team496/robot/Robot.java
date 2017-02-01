@@ -8,7 +8,9 @@ import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.cscore.AxisCamera;
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
+import edu.wpi.cscore.HttpCamera;
 import edu.wpi.cscore.UsbCamera;
+import edu.wpi.cscore.VideoSource;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -78,33 +80,40 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
 
-		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+		
+		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.20");
 		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
-
 		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
+			
+			
 			if (!pipeline.filterContoursOutput().isEmpty()) {
-				Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+				
 				synchronized (imgLock) {
-					centerX = r.x + (r.width / 2);
-
+					//centerX = r.x + (r.width / 2);
+					//SmartDashboard.putNumber("center x", centerX);
 					CvSink cvSink = CameraServer.getInstance().getVideo();
-					CvSource outputStream = CameraServer.getInstance().putVideo("Blur", 640, 480);
+					CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 640, 480);
 
 					Mat source = new Mat();
-					Mat output = new Mat();
+					//Mat output = new Mat();
 
 					while (!Thread.interrupted()) {
 						cvSink.grabFrame(source);
+						Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+						Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
 						Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x + r.width, r.y + r.height),
-								new Scalar(255, 0, 0));
-						Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
-						outputStream.putFrame(output);
+								new Scalar(0, 0, 255),2);
+						Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x + r1.width, r1.y + r1.height),
+								new Scalar(0, 0, 255),2);
+						//Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
+						outputStream.putFrame(source);
 						// Can do target math here
 
 					}
 				}
 			}
 		});
+		pegVisionThread.setDaemon(true);
 		pegVisionThread.start();
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
