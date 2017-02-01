@@ -1,16 +1,16 @@
 package org.usfirst.frc.team496.robot;
 
-import edu.wpi.first.wpilibj.RobotDrive;
-import edu.wpi.first.wpilibj.RobotDrive.MotorType;
-import edu.wpi.first.wpilibj.SPI;
-import edu.wpi.first.wpilibj.SampleRobot;
-import edu.wpi.first.wpilibj.Talon;
-import edu.wpi.cscore.AxisCamera;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+
+import com.kauailabs.navx.frc.AHRS;
+
 import edu.wpi.cscore.CvSink;
 import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.HttpCamera;
-import edu.wpi.cscore.UsbCamera;
-import edu.wpi.cscore.VideoSource;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -18,15 +18,16 @@ import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
+import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.RobotDrive.MotorType;
+import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.SampleRobot;
+import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
-
-import org.opencv.core.*;
-import org.opencv.imgproc.*;
-import com.kauailabs.navx.frc.*;
 
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
@@ -83,6 +84,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 		
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.20");
 		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
+		
 		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
 			
 			
@@ -113,6 +115,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				}
 			}
 		});
+		
 		pegVisionThread.setDaemon(true);
 		pegVisionThread.start();
 
