@@ -9,8 +9,10 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import edu.wpi.first.wpilibj.vision.VisionPipeline;
@@ -25,7 +27,9 @@ import edu.wpi.first.wpilibj.vision.VisionPipeline;
 public class PegPipeline implements VisionPipeline {
 
 	//Outputs
+	private Mat blurOutput = new Mat();
 	private Mat hslThresholdOutput = new Mat();
+	private Mat cvErodeOutput = new Mat();
 	private ArrayList<MatOfPoint> findContoursOutput = new ArrayList<MatOfPoint>();
 	private ArrayList<MatOfPoint> filterContoursOutput = new ArrayList<MatOfPoint>();
 
@@ -37,21 +41,36 @@ public class PegPipeline implements VisionPipeline {
 	 * This is the primary method that runs the entire pipeline and updates the outputs.
 	 */
 	@Override	public void process(Mat source0) {
+		// Step Blur0:
+		Mat blurInput = source0;
+		BlurType blurType = BlurType.get("Box Blur");
+		double blurRadius = 5.405405405405405;
+		blur(blurInput, blurType, blurRadius, blurOutput);
+
 		// Step HSL_Threshold0:
-		Mat hslThresholdInput = source0;
-		double[] hslThresholdHue = {77.6978417266187, 92.45733788395904};
-		double[] hslThresholdSaturation = {171.98741007194243, 255.0};
+		Mat hslThresholdInput = blurOutput;
+		double[] hslThresholdHue = {77.6978417266187, 92.12121212121212};
+		double[] hslThresholdSaturation = {171.98741007194246, 255.0};
 		double[] hslThresholdLuminance = {43.57014388489208, 255.0};
 		hslThreshold(hslThresholdInput, hslThresholdHue, hslThresholdSaturation, hslThresholdLuminance, hslThresholdOutput);
 
+		// Step CV_erode0:
+		Mat cvErodeSrc = hslThresholdOutput;
+		Mat cvErodeKernel = new Mat();
+		Point cvErodeAnchor = new Point(-1, -1);
+		double cvErodeIterations = 1.0;
+		int cvErodeBordertype = Core.BORDER_CONSTANT;
+		Scalar cvErodeBordervalue = new Scalar(-1);
+		cvErode(cvErodeSrc, cvErodeKernel, cvErodeAnchor, cvErodeIterations, cvErodeBordertype, cvErodeBordervalue, cvErodeOutput);
+
 		// Step Find_Contours0:
-		Mat findContoursInput = hslThresholdOutput;
+		Mat findContoursInput = cvErodeOutput;
 		boolean findContoursExternalOnly = false;
 		findContours(findContoursInput, findContoursExternalOnly, findContoursOutput);
 
 		// Step Filter_Contours0:
 		ArrayList<MatOfPoint> filterContoursContours = findContoursOutput;
-		double filterContoursMinArea = 125.0;
+		double filterContoursMinArea = 200.0;
 		double filterContoursMinPerimeter = 0.0;
 		double filterContoursMinWidth = 0.0;
 		double filterContoursMaxWidth = 1000.0;
@@ -67,11 +86,27 @@ public class PegPipeline implements VisionPipeline {
 	}
 
 	/**
+	 * This method is a generated getter for the output of a Blur.
+	 * @return Mat output from Blur.
+	 */
+	public Mat blurOutput() {
+		return blurOutput;
+	}
+
+	/**
 	 * This method is a generated getter for the output of a HSL_Threshold.
 	 * @return Mat output from HSL_Threshold.
 	 */
 	public Mat hslThresholdOutput() {
 		return hslThresholdOutput;
+	}
+
+	/**
+	 * This method is a generated getter for the output of a CV_erode.
+	 * @return Mat output from CV_erode.
+	 */
+	public Mat cvErodeOutput() {
+		return cvErodeOutput;
 	}
 
 	/**
@@ -92,6 +127,71 @@ public class PegPipeline implements VisionPipeline {
 
 
 	/**
+	 * An indication of which type of filter to use for a blur.
+	 * Choices are BOX, GAUSSIAN, MEDIAN, and BILATERAL
+	 */
+	enum BlurType{
+		BOX("Box Blur"), GAUSSIAN("Gaussian Blur"), MEDIAN("Median Filter"),
+			BILATERAL("Bilateral Filter");
+
+		private final String label;
+
+		BlurType(String label) {
+			this.label = label;
+		}
+
+		public static BlurType get(String type) {
+			if (BILATERAL.label.equals(type)) {
+				return BILATERAL;
+			}
+			else if (GAUSSIAN.label.equals(type)) {
+			return GAUSSIAN;
+			}
+			else if (MEDIAN.label.equals(type)) {
+				return MEDIAN;
+			}
+			else {
+				return BOX;
+			}
+		}
+
+		@Override
+		public String toString() {
+			return this.label;
+		}
+	}
+
+	/**
+	 * Softens an image using one of several filters.
+	 * @param input The image on which to perform the blur.
+	 * @param type The blurType to perform.
+	 * @param doubleRadius The radius for the blur.
+	 * @param output The image in which to store the output.
+	 */
+	private void blur(Mat input, BlurType type, double doubleRadius,
+		Mat output) {
+		int radius = (int)(doubleRadius + 0.5);
+		int kernelSize;
+		switch(type){
+			case BOX:
+				kernelSize = 2 * radius + 1;
+				Imgproc.blur(input, output, new Size(kernelSize, kernelSize));
+				break;
+			case GAUSSIAN:
+				kernelSize = 6 * radius + 1;
+				Imgproc.GaussianBlur(input,output, new Size(kernelSize, kernelSize), radius);
+				break;
+			case MEDIAN:
+				kernelSize = 2 * radius + 1;
+				Imgproc.medianBlur(input, output, kernelSize);
+				break;
+			case BILATERAL:
+				Imgproc.bilateralFilter(input, output, -1, radius, radius);
+				break;
+		}
+	}
+
+	/**
 	 * Segment an image based on hue, saturation, and luminance ranges.
 	 *
 	 * @param input The image on which to perform the HSL threshold.
@@ -105,6 +205,30 @@ public class PegPipeline implements VisionPipeline {
 		Imgproc.cvtColor(input, out, Imgproc.COLOR_BGR2HLS);
 		Core.inRange(out, new Scalar(hue[0], lum[0], sat[0]),
 			new Scalar(hue[1], lum[1], sat[1]), out);
+	}
+
+	/**
+	 * Expands area of lower value in an image.
+	 * @param src the Image to erode.
+	 * @param kernel the kernel for erosion.
+	 * @param anchor the center of the kernel.
+	 * @param iterations the number of times to perform the erosion.
+	 * @param borderType pixel extrapolation method.
+	 * @param borderValue value to be used for a constant border.
+	 * @param dst Output Image.
+	 */
+	private void cvErode(Mat src, Mat kernel, Point anchor, double iterations,
+		int borderType, Scalar borderValue, Mat dst) {
+		if (kernel == null) {
+			kernel = new Mat();
+		}
+		if (anchor == null) {
+			anchor = new Point(-1,-1);
+		}
+		if (borderValue == null) {
+			borderValue = new Scalar(-1);
+		}
+		Imgproc.erode(src, dst, kernel, anchor, (int)iterations, borderType, borderValue);
 	}
 
 	/**
