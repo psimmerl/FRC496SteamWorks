@@ -78,7 +78,7 @@ public class Robot extends SampleRobot  {
 			synchronized (imgLock) {
 				hasTarget = false;
 				
-				centerX = 0.0;
+				
 			}
 			outputStream.putFrame(source);
 			}
@@ -152,13 +152,13 @@ public class Robot extends SampleRobot  {
 			if(centerX == 0.0) {
 				turnRate = 0.0;
 			} else {
-				turnRate = turn * 0.005;
+				turnRate = -turn * 0.008;
 			}
 			
 			myRobot.arcadeDrive(-0.6, turnRate);
 			}
 			else {
-				myRobot.arcadeDrive(0,-prevTurn *.005);
+				myRobot.arcadeDrive(0,-prevTurn *.008);
 			}
 			// myRobot.mecanumDrive_Cartesian(x, y, rotation, gyroAngle);
 			//myRobot.arcadeDrive(1, 0);
