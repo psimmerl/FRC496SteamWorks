@@ -81,44 +81,67 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
 
-		
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.20");
 		camera.setResolution(IMG_WIDTH, IMG_HEIGHT);
 		
+		CvSink cvSink = CameraServer.getInstance().getVideo();
+		CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 320, 240);
+		Mat source = new Mat();
 		pegVisionThread = new VisionThread(camera, new PegPipeline(), pipeline -> {
+	
 			
+			cvSink.grabFrame(source);
 			
-			if (!pipeline.filterContoursOutput().isEmpty()) {
+			if (pipeline.filterContoursOutput().size() == 2) {
+				
+				Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
+				Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
+				Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x +
+						  r.width, r.y + r.height), new Scalar(0, 0, 255),2);
+				Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x +
+						  r1.width, r1.y + r1.height), new Scalar(0, 0, 255),2);
 				
 				synchronized (imgLock) {
-					//centerX = r.x + (r.width / 2);
-					//SmartDashboard.putNumber("center x", centerX);
-					CvSink cvSink = CameraServer.getInstance().getVideo();
-					CvSource outputStream = CameraServer.getInstance().putVideo("Peg Vision", 640, 480);
-
-					Mat source = new Mat();
-					//Mat output = new Mat();
-
-					while (!Thread.interrupted()) {
-						cvSink.grabFrame(source);
-						Rect r = Imgproc.boundingRect(pipeline.filterContoursOutput().get(0));
-						Rect r1 = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
-						Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x + r.width, r.y + r.height),
-								new Scalar(0, 0, 255),2);
-						Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x + r1.width, r1.y + r1.height),
-								new Scalar(0, 0, 255),2);
-						//Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
-						outputStream.putFrame(source);
-						// Can do target math here
-
-					}
+					centerX = r.x + (r.width / 2);
+					
+					
 				}
 			}
+			SmartDashboard.putNumber("CenterX", centerX);
+			outputStream.putFrame(source);
+
 		});
-		
 		pegVisionThread.setDaemon(true);
 		pegVisionThread.start();
 
+		/*
+		 * pegVisionThread = new VisionThread(camera, new PegPipeline(),
+		 * pipeline -> {
+		 * 
+		 * 
+		 * if (!pipeline.filterContoursOutput().isEmpty()) {
+		 * 
+		 * synchronized (imgLock) { //centerX = r.x + (r.width / 2);
+		 * //SmartDashboard.putNumber("center x", centerX); CvSink cvSink =
+		 * CameraServer.getInstance().getVideo(); CvSource outputStream =
+		 * CameraServer.getInstance().putVideo("Peg Vision", 640, 480);
+		 * 
+		 * Mat source = new Mat(); //Mat output = new Mat();
+		 * 
+		 * while (!Thread.interrupted()) { cvSink.grabFrame(source); Rect r =
+		 * Imgproc.boundingRect(pipeline.filterContoursOutput().get(0)); Rect r1
+		 * = Imgproc.boundingRect(pipeline.filterContoursOutput().get(1));
+		 * Imgproc.rectangle(source, new Point(r.x, r.y), new Point(r.x +
+		 * r.width, r.y + r.height), new Scalar(0, 0, 255),2);
+		 * Imgproc.rectangle(source, new Point(r1.x, r1.y), new Point(r1.x +
+		 * r1.width, r1.y + r1.height), new Scalar(0, 0, 255),2);
+		 * //Imgproc.cvtColor(source, output, Imgproc.COLOR_BGR2GRAY);
+		 * outputStream.putFrame(source); // Can do target math here
+		 * 
+		 * } } } });
+		 * 
+		 * pegVisionThread.setDaemon(true); pegVisionThread.start();
+		 */
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
 
