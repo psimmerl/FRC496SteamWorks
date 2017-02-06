@@ -27,47 +27,41 @@ public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
 
 	Talon climbingMotor = new Talon(4);
-	//Joystick stick = new Joystick(0);
+	// Joystick stick = new Joystick(0);
 	XboxController xbox = new XboxController(1);
 	final String defaultAuto = "Default";
 	final String customAuto = "My Auto";
 	SendableChooser<String> chooser = new SendableChooser<>();
 	AHRS ahrs;
-	Encoder enc;
+	Encoder enc1, enc2, enc3, enc4;
 	PowerDistributionPanel pdp;
 
-	Thread visionThread = new Thread(() -> {
-		// Get the Axis camera from CameraServer
-		AxisCamera camera = CameraServer.getInstance().addAxisCamera("axis-camera.local");
-		// Set the resolution
-		camera.setResolution(640, 480);
-
-		// Get a CvSink. This will capture Mats from the camera
-		CvSink cvSink = CameraServer.getInstance().getVideo();
-		// Setup a CvSource. This will send images back to the Dashboard
-		CvSource outputStream = CameraServer.getInstance().putVideo("Rectangle", 640, 480);
-
-		// Mats are very memory expensive. Lets reuse this Mat.
-		Mat mat = new Mat();
-
-		// This cannot be 'true'. The program will never exit if it is. This
-		// lets the robot stop this thread when restarting robot code or
-		// deploying.
-		while (!Thread.interrupted()) {
-			// Tell the CvSink to grab a frame from the camera and put it
-			// in the source mat. If there is an error notify the output.
-			if (cvSink.grabFrame(mat) == 0) {
-				// Send the output the error.
-				outputStream.notifyError(cvSink.getError());
-				// skip the rest of the current iteration
-				continue;
-			}
-			// Put a rectangle on the image
-			Imgproc.rectangle(mat, new Point(270, 290), new Point(370, 190), new Scalar(0, 255, 75), 1);
-			// Give the output stream a new image to display
-			outputStream.putFrame(mat);
-		}
-	});
+	/*
+	 * Thread visionThread = new Thread(() -> { // Get the Axis camera from
+	 * CameraServer AxisCamera camera =
+	 * CameraServer.getInstance().addAxisCamera("axis-camera.local"); // Set the
+	 * resolution camera.setResolution(640, 480);
+	 * 
+	 * // Get a CvSink. This will capture Mats from the camera CvSink cvSink =
+	 * CameraServer.getInstance().getVideo(); // Setup a CvSource. This will
+	 * send images back to the Dashboard CvSource outputStream =
+	 * CameraServer.getInstance().putVideo("Rectangle", 640, 480);
+	 * 
+	 * // Mats are very memory expensive. Lets reuse this Mat. Mat mat = new
+	 * Mat();
+	 * 
+	 * // This cannot be 'true'. The program will never exit if it is. This //
+	 * lets the robot stop this thread when restarting robot code or //
+	 * deploying. while (!Thread.interrupted()) { // Tell the CvSink to grab a
+	 * frame from the camera and put it // in the source mat. If there is an
+	 * error notify the output. if (cvSink.grabFrame(mat) == 0) { // Send the
+	 * output the error. outputStream.notifyError(cvSink.getError()); // skip
+	 * the rest of the current iteration continue; } // Put a rectangle on the
+	 * image Imgproc.rectangle(mat, new Point(270, 290), new Point(370, 190),
+	 * new Scalar(0, 255, 75), 1); // Give the output stream a new image to
+	 * display outputStream.putFrame(mat); } });
+	 * 
+	 */
 
 	PIDController turnController;
 	double rotateToAngleRate;
@@ -90,7 +84,15 @@ public class Robot extends SampleRobot implements PIDOutput {
 			DriverStation.reportError("Error instantiating navX-MXP:  " + ex.getMessage(), true);
 		}
 		pdp = new PowerDistributionPanel();
-		enc = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
+		enc1 = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
+		enc2 = new Encoder(2, 3, false, Encoder.EncodingType.k4X);
+		enc3 = new Encoder(4, 5, false, Encoder.EncodingType.k4X);
+		enc4 = new Encoder(6, 7, false, Encoder.EncodingType.k4X);
+		double wheel = 6.0;
+		double wheel1Ticks = 1082; // our measure was 328
+		double circumfrence = Math.PI * wheel;
+		double ticks = circumfrence / wheel1Ticks;
+		enc1.setDistancePerPulse(ticks);
 		myRobot.setExpiration(0.1);
 		myRobot.setInvertedMotor(MotorType.kFrontLeft, true);
 		myRobot.setInvertedMotor(MotorType.kRearLeft, true);
@@ -100,9 +102,6 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setOutputRange(-1.0, 1.0);
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
-
-		visionThread.setDaemon(true);
-		visionThread.start();
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
@@ -120,11 +119,32 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void autonomous() {
-		enc.reset();
+		enc1.reset();
+		enc2.reset();
+		enc3.reset();
+		enc4.reset();
+
 		myRobot.setSafetyEnabled(false);
+		boolean step1 = false, step2 = false;
 		while (isAutonomous() && isEnabled()) {
 			// System.out.println(enc.getRaw());
+			ahrs.reset();
+			System.out.println(enc1.getDistance());
+			turnController.setSetpoint(0.0f);
+			double distance = enc1.getDistance();
+
+			if (distance < 36 && !step1) {
+				double currentRotationRate = rotateToAngleRate;
+				myRobot.mecanumDrive_Cartesian(0, 0.6, currentRotationRate, ahrs.getAngle());
+			} else {
+				myRobot.mecanumDrive_Cartesian(0, 0, 0, ahrs.getAngle());
+				step1 = true;
+			}
+			
+		
+
 		}
+
 	}
 
 	@Override
