@@ -2,7 +2,6 @@ package org.usfirst.frc.team496.robot;
 
 import com.kauailabs.navx.frc.AHRS;
 
-import edu.wpi.cscore.AxisCamera;
 import edu.wpi.cscore.HttpCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -11,6 +10,7 @@ import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
 import edu.wpi.first.wpilibj.PowerDistributionPanel;
+import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.RobotDrive.MotorType;
 import edu.wpi.first.wpilibj.SPI;
@@ -24,9 +24,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Robot extends SampleRobot implements PIDOutput {
 	RobotDrive myRobot = new RobotDrive(0, 1, 2, 3);
-	AxisCamera camera;
+
 	Victor climbingMotor = new Victor(4);
-	// Joystick stick = new Joystick(0);
 
 	XboxController xbox = new XboxController(1);
 	XboxController opXbox = new XboxController(0);
@@ -39,6 +38,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 	AHRS ahrs;
 	Encoder enc1, enc2, enc3, enc4;
 	PowerDistributionPanel pdp;
+	Relay lightSwitch;
 
 	PIDController turnController;
 	double rotateToAngleRate;
@@ -84,8 +84,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setOutputRange(-1.0, 1.0);
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
-		
+		lightSwitch = new Relay(0);
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.38");
+		
+		
 
 		LiveWindow.addActuator("DriveSystem", "RotateController", turnController);
 		LiveWindow.addSensor("PowerSystem", "Current", pdp);
@@ -169,6 +171,48 @@ public class Robot extends SampleRobot implements PIDOutput {
 			case centerStation:
 				break;
 			case leftStation:
+				switch (selection) {
+				case DRIVE_FORWARD:
+					double distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 36) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = ROTATE_TO_TARGET;
+					}
+					break;
+
+				case ROTATE_TO_TARGET:
+					System.out.println(ahrs.getAngle());
+
+					if (ahrs.getAngle() < -45) {
+						myRobot.mecanumDrive_Cartesian(0, 0.0, -0.4, ahrs.getAngle());
+					} else {
+						turnController.setSetpoint(0.0f);
+						ahrs.reset();
+						enc1.reset();
+						selection = DRIVE_TO_TARGET;
+					}
+					break;
+				case DRIVE_TO_TARGET:
+					distance = Math.abs(enc1.getDistance());
+					turnController.enable();
+					if (distance < 12) {
+						double currentRotationRate = rotateToAngleRate;
+						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
+					} else {
+						ahrs.reset();
+
+						selection = END;
+					}
+					break;
+				case END:
+					myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
+					break;
+				}
 				break;
 			default:
 				myRobot.mecanumDrive_Cartesian(0, 0.0, 0, ahrs.getAngle());
@@ -187,9 +231,9 @@ public class Robot extends SampleRobot implements PIDOutput {
 			if (xbox.getAButton() == true) {
 				ahrs.reset();
 			}
-			if (opXbox.getRawButton(2)) {
+			if (opXbox.getRawButton(3)) {
 				climbingMotor.set(1.0);
-			} else if (opXbox.getRawButton(3)) {
+			} else if (opXbox.getRawButton(4)) {
 				climbingMotor.set(-1.0);
 			} else {
 				climbingMotor.set(0.0);
@@ -229,7 +273,12 @@ public class Robot extends SampleRobot implements PIDOutput {
 			 * else if (xbox.getPOV() == 315) {
 			 * myRobot.mecanumDrive_Cartesian(1, 1, currentRotationRate, 0); }
 			 */
-
+			if (opXbox.getRawButton(1)) {
+				lightSwitch.set(Relay.Value.kOn);
+			}
+			if (opXbox.getRawButton(2)) {
+				lightSwitch.set(Relay.Value.kOff);
+			}
 			if (xbox.getRawButton(6) && (Timer.getFPGATimestamp() - lastModeSwitchTime) > .3) {
 				xMultiplier *= -1;
 				yMultiplier *= -1;
