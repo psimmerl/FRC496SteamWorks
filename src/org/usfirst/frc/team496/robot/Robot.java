@@ -84,7 +84,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 		turnController.setOutputRange(-1.0, 1.0);
 		turnController.setAbsoluteTolerance(kToleranceDegrees);
 		turnController.setContinuous(true);
-		lightSwitch = new Relay(0);
+		lightSwitch = new Relay(1);
+		
+		//lightSwitch.set(Relay.Value.kReverse);
+		LiveWindow.addActuator("light", "switch", lightSwitch);
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.38");
 		
 		
@@ -98,6 +101,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void robotInit() {
+		lightSwitch.set(Relay.Value.kForward);
 		chooser.addDefault("Default Auto", defaultAuto);
 		chooser.addObject("Left Station", leftStation);
 		chooser.addObject("Center Station", centerStation);
@@ -224,9 +228,22 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void operatorControl() {
+		boolean lightOn = false;
 		myRobot.setSafetyEnabled(true);
 		while (isOperatorControl() && isEnabled()) {
-
+			
+			
+			if(opXbox.getAButton()) {
+				lightOn = true;
+			} else if (opXbox.getBButton()) {
+				lightOn = false;
+			}
+			if(lightOn) {
+				lightSwitch.set(Relay.Value.kForward);
+			} else {
+				lightSwitch.set(Relay.Value.kOff);
+			}
+						
 			boolean rotateToAngle = false;
 			if (xbox.getAButton() == true) {
 				ahrs.reset();
@@ -256,6 +273,16 @@ public class Robot extends SampleRobot implements PIDOutput {
 			} else {
 				changed = true;
 			}
+			
+		/*	if(xbox.getX(Hand.kLeft)!=0){
+				changed = true;
+				turnController.disable();
+				turnController.setSetpoint(ahrs.getAngle());
+				currentRotationRate = xbox.getX(Hand.kLeft);
+			}else{
+				turnController.enable();
+				currentRotationRate = rotateToAngleRate;
+			}*/
 
 			/*
 			 * if (xbox.getPOV() == 0) { myRobot.mecanumDrive_Cartesian(0, -1,
@@ -273,12 +300,9 @@ public class Robot extends SampleRobot implements PIDOutput {
 			 * else if (xbox.getPOV() == 315) {
 			 * myRobot.mecanumDrive_Cartesian(1, 1, currentRotationRate, 0); }
 			 */
-			if (opXbox.getRawButton(1)) {
-				lightSwitch.set(Relay.Value.kOn);
-			}
-			if (opXbox.getRawButton(2)) {
-				lightSwitch.set(Relay.Value.kOff);
-			}
+	
+			
+			
 			if (xbox.getRawButton(6) && (Timer.getFPGATimestamp() - lastModeSwitchTime) > .3) {
 				xMultiplier *= -1;
 				yMultiplier *= -1;
@@ -299,8 +323,10 @@ public class Robot extends SampleRobot implements PIDOutput {
 
 	@Override
 	public void test() {
+		while(isTest() && isEnabled()) {
 		LiveWindow.run();
-		System.out.println("Current of 14: " + pdp.getCurrent(14));
+		}
+
 	}
 
 	@Override
