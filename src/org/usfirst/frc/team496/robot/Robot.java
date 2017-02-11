@@ -133,7 +133,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				case DRIVE_FORWARD:
 					double distance = Math.abs(enc1.getDistance());
 					turnController.enable();
-					if (distance < 36) {
+					if (distance < 93) {
 						double currentRotationRate = rotateToAngleRate;
 						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
 					} else {
@@ -179,7 +179,7 @@ public class Robot extends SampleRobot implements PIDOutput {
 				case DRIVE_FORWARD:
 					double distance = Math.abs(enc1.getDistance());
 					turnController.enable();
-					if (distance < 36) {
+					if (distance < 93) {
 						double currentRotationRate = rotateToAngleRate;
 						myRobot.mecanumDrive_Cartesian(0, -0.6, currentRotationRate, ahrs.getAngle());
 					} else {
