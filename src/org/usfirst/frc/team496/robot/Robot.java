@@ -3,6 +3,7 @@ package org.usfirst.frc.team496.robot;
 import com.kauailabs.navx.frc.AHRS;
 
 import edu.wpi.cscore.HttpCamera;
+import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
@@ -41,12 +42,15 @@ public class Robot extends SampleRobot implements PIDOutput {
 	Relay lightSwitch;
 
 	PIDController turnController;
+	
 	double rotateToAngleRate;
 	boolean changed;
 	static final double kP = 0.03;
 	static final double kI = 0.00;
 	static final double kD = 0.00;
 	static final double kF = 0.00;
+	
+
 
 	static double timeStart = Timer.getFPGATimestamp();
 	static double lastModeSwitchTime = timeStart;
@@ -89,6 +93,8 @@ public class Robot extends SampleRobot implements PIDOutput {
 		//lightSwitch.set(Relay.Value.kReverse);
 		LiveWindow.addActuator("light", "switch", lightSwitch);
 		HttpCamera camera = CameraServer.getInstance().addAxisCamera("10.4.96.38");
+		UsbCamera camera2 = CameraServer.getInstance().startAutomaticCapture();
+		camera2.setResolution(480, 320);
 		
 		
 
